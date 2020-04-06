@@ -6,7 +6,7 @@
 #include<iostream>
 #include<iomanip>
 #include<fstream>
-#include <sstream>      // std::stringstream, std::stringbuf
+#include<sstream>
 
 using namespace std;
 
