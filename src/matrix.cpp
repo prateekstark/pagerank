@@ -7,7 +7,7 @@
 #include<iomanip>
 #include<fstream>
 #include<sstream>
-
+#include "MapReduce.cpp"
 using namespace std;
 
 void printMatrix(double* array, int n){
@@ -23,6 +23,7 @@ public:
 	double* H;
 	int size;
 	double alpha = 0.85;
+	MapReduce mr;
 
 	vector<int> dangling_nodes;
 
@@ -103,19 +104,19 @@ public:
 	// For not we will assume row major form
 
 	void multiply(double factor, double* H, double* I, double* product){
-		
 		double sum;
 		int n = this->size;
-
 		for(int i=0; i<n;i++){
 			sum = 0.0;
 			for(int j=0;j<n;j++){
 				sum += H[j+(n*i)]*I[j];
 			}
-
 			product[i] = factor*sum;
 		}
+	}
 
+	void multiplyMapReduce(double factor, double* H, double* I, double* product){
+		mr.multiply_matrix(factor, H, I, this->size, product);
 	}
 
 	void pagerank(double* GI){
@@ -135,8 +136,8 @@ public:
 		int index = 0;
 
 		while(index < 100){
+			// this->multiplyMapReduce(factor, H, I, GI);
 			this->multiply(factor, H, I, GI);
-	
 			for(int i=0;i<dangling_nodes.size();i++){
 				DI[dangling_nodes[i]] = 1.0/n;
 			}
