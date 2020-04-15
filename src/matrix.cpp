@@ -39,6 +39,14 @@ public:
 				dangling_nodes.push_back(i);
 			}
 		}
+		cout << "Size: " << size << endl;
+		// printMatrix(num_links, 2);
+		for(int i=0;i<size;i++){
+			cout << num_links[i] << " ";
+		}
+		cout << endl;
+		cout << "Dangling Nodes 1: " << dangling_nodes.size() << endl;
+	
 	}
 
 	void readMatrixFile(string filename){
@@ -95,6 +103,8 @@ public:
 
 	    update_dangling_nodes(num_links);   
 	    free(num_links);
+	    // cout << "Dangling Nodes: " << dangling_nodes.size() << endl;
+
 	    inFile.close();
 
     }
@@ -136,8 +146,11 @@ public:
 		int index = 0;
 
 		while(index < 100){
+			
 			// this->multiplyMapReduce(factor, H, I, GI);
 			this->multiply(factor, H, I, GI);
+			// printMatrix(GI, 2);
+			// cout << dangling_nodes.size() << endl;
 			for(int i=0;i<dangling_nodes.size();i++){
 				DI[dangling_nodes[i]] = 1.0/n;
 			}
