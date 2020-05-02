@@ -149,7 +149,7 @@ public:
 			
 			// this->multiplyMapReduce(factor, H, I, GI);
 			this->multiply(factor, H, I, GI);
-			// printMatrix(GI, 2);
+			printMatrix(GI, 2);
 			// cout << dangling_nodes.size() << endl;
 			for(int i=0;i<dangling_nodes.size();i++){
 				DI[dangling_nodes[i]] = 1.0/n;
@@ -169,6 +169,7 @@ public:
 			for(int i=0;i<n;i++){
 				GI[i] += dangling_add + identity_add;
 			}
+			printMatrix(GI, n);
 
 			memcpy(I, GI, n*sizeof(double));
 
