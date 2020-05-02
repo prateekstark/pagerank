@@ -12,9 +12,7 @@
 #   endif
 #endif
 
-#include "mapreduce.hpp"
-
-namespace friend_graph {
+#include "../../include/mapreduce.hpp"
 
 unsigned const friends[8][8] = { { 0, 1, 0, 1, 1, 0, 0, 0 },
                                  { 0, 0, 0, 1, 0, 0, 0, 1 },
@@ -26,46 +24,41 @@ unsigned const friends[8][8] = { { 0, 1, 0, 1, 1, 0, 0, 0 },
                                  { 0, 0, 0, 0, 0, 0, 0, 0 } };
 char const * const names[] = { "Steve", "Anne", "Michael", "Brett", "Diane", "Sue", "Ruby", "Jack" };
 
-bool const is_friend(unsigned const person1, unsigned const person2)
-{
+bool const is_friend(unsigned const person1, unsigned const person2){
     return person1 != person2  &&  (friends[person1][person2]  ||  friends[person2][person1]);
 }
 
 template<typename MapTask>
-class datasource : mapreduce::detail::noncopyable
-{
-  public:
-    datasource() : sequence_(0)
-    {
+
+class datasource : mapreduce::detail::noncopyable{
+public:
+    datasource() : sequence_(0){
     }
 
-    bool const setup_key(typename MapTask::key_type &key)
-    {
+    bool const setup_key(typename MapTask::key_type &key){
         key = sequence_++;
         return key < 8;
     }
 
-    bool const get_data(typename MapTask::key_type const &key, typename MapTask::value_type &value)
-    {
+    bool const get_data(typename MapTask::key_type const &key, typename MapTask::value_type &value){
         for (unsigned loop=0; loop<8; ++loop)
-            if (is_friend(key,loop))
+            if (is_friend(key,loop)){
                 value.push_back(loop);
+            }
         return true;
     }
 
-  private:
+private:
     unsigned sequence_;
 };
 
-struct map_task : public mapreduce::map_task<unsigned, std::vector<unsigned> >
-{
+struct map_task : public mapreduce::map_task<unsigned, std::vector<unsigned> >{
     template<typename Runtime>
     void operator()(Runtime &runtime, key_type const &key, value_type const &value) const
     {
         std::cout << "\n\n" << names[key] << "\n";
 
-        for (auto const &v1 : value)
-        {
+        for(auto const &v1 : value){
             typename Runtime::reduce_task_type::key_type const emit_key = std::make_pair(std::min(key, v1), std::max(key, v1));
 
             std::cout << "    {" << names[emit_key.first] << ", " << names[emit_key.second] << "}";
@@ -79,11 +72,11 @@ struct map_task : public mapreduce::map_task<unsigned, std::vector<unsigned> >
     }
 };
 
-struct reduce_task : public mapreduce::reduce_task<std::pair<unsigned, unsigned>, std::vector<unsigned> >
-{
+struct reduce_task : public mapreduce::reduce_task<std::pair<unsigned, unsigned>, std::vector<unsigned> >{
     template<typename Runtime, typename It>
     void operator()(Runtime &runtime, key_type const &key, It it, It ite) const
     {
+        std::cout << "Starting Reduce Task" << std::endl;
         if (it == ite)
             return;
         else if (std::distance(it,ite) == 1)
@@ -95,8 +88,7 @@ struct reduce_task : public mapreduce::reduce_task<std::pair<unsigned, unsigned>
         // calculate the itersection of all of the vectors in (it .. ite]
         // i.e. values that are in all the vectors
         value_type results(*it);
-        for (It it1=++it; it1!=ite; ++it1)
-        {
+        for(It it1=++it; it1!=ite; ++it1){
             std::vector<unsigned> working_set;
             std::swap(working_set, results);
             std::set_intersection(
@@ -108,8 +100,7 @@ struct reduce_task : public mapreduce::reduce_task<std::pair<unsigned, unsigned>
         }
 
         // don't emit empty results
-        if (results.size())
-        {
+        if (results.size()){
             std::cout << "\n{ " << names[key.first] << ", " << names[key.second] << "} -> [ ";
             for (auto uid=results.cbegin(); uid!=results.cend(); ++uid)
                 std::cout << names[*uid] << " ";
@@ -120,60 +111,54 @@ struct reduce_task : public mapreduce::reduce_task<std::pair<unsigned, unsigned>
     }
 };
 
-typedef
-mapreduce::job<friend_graph::map_task,
-               friend_graph::reduce_task,
-               mapreduce::null_combiner,
-               friend_graph::datasource<friend_graph::map_task>
-> job;
+typedef mapreduce::job<map_task, reduce_task, mapreduce::null_combiner, datasource<map_task> > job;
 
-} // namespace friend_graph
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]){
     mapreduce::specification spec;
-
-    if (argc > 1)
+    if (argc > 1){
         spec.map_tasks = std::max(1, atoi(argv[1]));
+    }
+    std::cout << spec.map_tasks << std::endl;
 
-    if (argc > 2)
+    if(argc > 2){
         spec.reduce_tasks = atoi(argv[2]);
-    else
-        spec.reduce_tasks = std::max(1U, std::thread::hardware_concurrency());
+    }
 
-    friend_graph::job::datasource_type datasource;
+    else{
+        spec.reduce_tasks = std::max(1U, std::thread::hardware_concurrency());
+    }
+
+    job::datasource_type datasource;
 
     std::cout <<"\nFriend graph analysis MapReduce..." <<std::endl;
 
-    for (unsigned loop=0; loop<sizeof(friend_graph::names)/sizeof(friend_graph::names[0]); ++loop)
-    {
-        std::cout << loop << " " << friend_graph::names[loop] << " is friends with";
-        for (unsigned friend_ndx=0; friend_ndx<sizeof(friend_graph::names)/sizeof(friend_graph::names[0]); ++friend_ndx)
-        {
-            if (friend_graph::is_friend(loop,friend_ndx))
-                std::cout << " " << friend_graph::names[friend_ndx];
+    for(unsigned loop=0; loop<sizeof(names)/sizeof(names[0]); ++loop){
+        std::cout << loop << " " << names[loop] << " is friends with";
+        for(unsigned friend_ndx=0; friend_ndx<sizeof(names)/sizeof(names[0]); ++friend_ndx){
+            if(is_friend(loop,friend_ndx))
+                std::cout << " " << names[friend_ndx];
         }
         std::cout << "\n";
     }
-
-    friend_graph::job job(datasource, spec);
+    job job1(datasource, spec);
     mapreduce::results result;
 #ifdef _DEBUG
-    job.run<mapreduce::schedule_policy::sequential<friend_graph::job> >(result);
+    job1.run<mapreduce::schedule_policy::sequential<job> >(result);
 #else
-    job.run<mapreduce::schedule_policy::cpu_parallel<friend_graph::job> >(result);
+    job1.run<mapreduce::schedule_policy::cpu_parallel<job> >(result);
 #endif
-    std::cout <<"\nMapReduce finished in " << result.job_runtime.count() << "s with " << std::distance(job.begin_results(), job.end_results()) << " results\n\n";
+    std::cout <<"\nMapReduce finished in " << result.job_runtime.count() << "s with " << std::distance(job1.begin_results(), job1.end_results()) << " results\n\n";
 
-    for (auto it=job.begin_results(); it!=job.end_results(); ++it)
-    {
-        std::cout << friend_graph::names[it->first.first]
+    for(auto it=job1.begin_results(); it!=job1.end_results(); ++it){
+        std::cout << names[it->first.first]
                   << " and "
-                  << friend_graph::names[it->first.second]
+                  << names[it->first.second]
                   << " are both friends with: ";
 
-        for (unsigned const value : it->second)
-            std::cout << friend_graph::names[value] << " ";
+        for(unsigned const value : it->second){
+            std::cout << names[value] << " ";
+        }
         std::cout << "\n";
     }
 

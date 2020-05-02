@@ -89,8 +89,9 @@ struct reduce_task : public mapreduce::reduce_task<bool, long>
     template<typename Runtime, typename It>
     void operator()(Runtime &runtime, key_type const &key, It it, It ite) const
     {
-        if (key)
+        if (key){
             std::for_each(it, ite, std::bind(&Runtime::emit, &runtime, true, std::placeholders::_1));
+        }
     }
 };
 

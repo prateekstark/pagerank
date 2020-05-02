@@ -147,6 +147,7 @@ int main(int argc, char *argv[]){
 		double* H = (double*)malloc((size*size)*sizeof(double));
 		*H = {0};
 		string filePath = "../test/" + (string)argv[2];
+		
 		double alpha = 0.85;
 		
 		vector<int> dangling_nodes;
@@ -183,7 +184,7 @@ int main(int argc, char *argv[]){
 
 
 		while(index < 100){
-			MyMap mymap;
+			// MyMap mymap;
 			pid = 0;
 			for(int i=0;i<size;i++){
 				if(mype == 0){
@@ -192,8 +193,8 @@ int main(int argc, char *argv[]){
 						if(H[j+(size)*i] != 0 && I[j]!=0){
 							localMap[localMapSize++] = H[j+(size)*i];
 							localMap[localMapSize++] = I[j];
-							mymap.addElement(i, H[j+(size)*i]);
-							mymap.addElement(i, I[j]);
+							// mymap.addElement(i, H[j+(size)*i]);
+							// mymap.addElement(i, I[j]);
 						}
 					}
 					MPI_Send(&i, 1, MPI_INT, (i%np), tag1, MPI_COMM_WORLD);

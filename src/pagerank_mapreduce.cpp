@@ -1,5 +1,7 @@
-#include<boost/config.hpp>
+// Copyright (c) 2009-2016 Craig Henderson
+// https://github.com/cdmh/mapreduce
 
+#include <boost/config.hpp>
 #if defined(BOOST_MSVC)
 #   pragma warning(disable: 4127)
 
@@ -11,129 +13,146 @@
 #endif
 
 #include "../Thirdparty/mapreduce/include/mapreduce.hpp"
-#include "matrix.cpp"
-#include <iostream>
-#include <vector>
-namespace pagerank_calculator{
-	bool const is_prime(long const number){
-	    if (number > 2)
-	    {
-	        if (number % 2 == 0)
-	            return false;
+#include "utils.cpp"
+#include <bits/stdc++.h> 
 
-	        long const n = std::abs(number);
-	        long const sqrt_number = static_cast<long>(std::sqrt(static_cast<double>(n)));
-
-	        for (long i = 3; i < sqrt_number; i+=2)
-	        {
-	            if (n % i == 0)
-	                return false;
-	        }
-	    }
-	    else if (number == 0 || number == 1)
-	        return false;
-	    return true;
-	}
-	template<typename MapTask>
-	class pagerank_source : mapreduce::detail::noncopyable
-	{
-	  public:
-		pagerank_source(vector<double> H, vector<double> I, int step, int size, int sequence, int first, int last)
-	   	: H_(H), I_(I), step_(step), size_(size), sequence_(sequence), first_(first), last_(last)
-	   	{
-	    }
-
-	    bool const setup_key(typename MapTask::key_type &key){
-	        key = sequence_++;
-	        return (key * step_ < last_);
-	        return true;
-	    }
-
-	    bool const get_data(typename MapTask::key_type const &key, typename MapTask::value_type &value){
-	        typename MapTask::value_type val;
-	        
-
-	        val.first  = first_ + (key * step_);
-	        val.second = std::min(val.first + step_ - 1, last_);
-	        std::swap(val, value);
-	        return true;
-	    }
-
-	  private:
-	    int sequence_;
-	    int step_;
-	    int size_;
-	    int last_;
-	    int first_;
-	    vector<double> H_;
-	    vector<double> I_;
-	};
-
-
-	struct map_task : public mapreduce::map_task<pair<char a, pair<int, int> >, std::pair<vector<double>, pair<int, int> > >
-	{
-	    template<typename Runtime>
-	    void operator()(Runtime &runtime, key_type const &/*key*/, value_type const &value) const
-	    {
-	        for (key_type loop=value.first; loop<=value.second; ++loop)
-	            runtime.emit_intermediate(is_prime(loop), loop);
-	    }
-	};
-
-	struct reduce_task : public mapreduce::reduce_task<bool, long>
-	{
-	    template<typename Runtime, typename It>
-	    void operator()(Runtime &runtime, key_type const &key, It it, It ite) const
-	    {
-	        if (key)
-	            std::for_each(it, ite, std::bind(&Runtime::emit, &runtime, true, std::placeholders::_1));
-	    }
-	};
-
-	typedef
-	mapreduce::job<pagerank_calculator::map_task,
-	               pagerank_calculator::reduce_task,
-	               mapreduce::null_combiner,
-	               pagerank_calculator::pagerank_source<pagerank_calculator::map_task>
-	> job;
-
-} // namespace pagerank
 using namespace std;
 
+double* H;
+double* I;
+vector<int> dangling_nodes;
+int size;
+
+template<typename MapTask>
+class datasource : mapreduce::detail::noncopyable{
+public:
+    datasource() : sequence_(0){
+    }
+
+    bool const setup_key(typename MapTask::key_type &key){
+        key = sequence_++;
+        return key < size;
+    }
+
+    bool const get_data(typename MapTask::key_type const &key, typename MapTask::value_type &value){
+		for(int j = 0; j<size; j++){
+			if(H[j+(size)*key] != 0 && I[j] != 0){
+				value.push_back(H[j+(size)*key]*I[j]);
+			}
+		}
+        return true;
+    }
+
+private:
+    int sequence_;
+};
+
+struct map_task : public mapreduce::map_task<int, vector<double> >{
+    template<typename Runtime>
+    void operator()(Runtime &runtime, key_type const &key, value_type const &value) const
+    {
+    	typename Runtime::reduce_task_type::key_type const emit_key = key;
+    	// runtime.emit_intermediate(key, value);
+        runtime.emit_intermediate(emit_key, value);
+    }
+};
+
+struct reduce_task : public mapreduce::reduce_task<int, vector<double> >{
+    template<typename Runtime, typename It>
+    void operator()(Runtime &runtime, key_type const &key, It it, It ite) const
+    {
+    	if(it == ite){
+    		return;
+    	}
+    	else{
+    		double sum = 0.0;
+    		for(It it1=++it; it1!=ite; ++it1){
+            	sum += *it1;
+	        }
+    		// runtime.emit(key, accumulate(*it, *ite, 0));
+    		runtime.emit(key, sum);
+    		return;
+    	}
+    }
+};
+
+typedef mapreduce::job<map_task, reduce_task, mapreduce::null_combiner, datasource<map_task> > job;
+
 int main(int argc, char *argv[]){
+    mapreduce::specification spec;
+    if (argc > 1){
+        spec.map_tasks = max(1, atoi(argv[1]));
+    }
+    cout << spec.map_tasks << endl;
 
-	if(argc == 3){
+    if(argc > 2){
+        spec.reduce_tasks = atoi(argv[2]);
+    }
 
-		int n = std::stoi(argv[1]);
-		
-		Matrix m;
-		m.set_size(n);
+    else{
+        spec.reduce_tasks = max(1U, thread::hardware_concurrency());
+    }
 
-		string filePath = "../test/" + (string)argv[2];
+    // Datasource maybe from a file!
+    // int size;
+    cout << "Enter size of array!" << endl;
+    cin >> size;
 
-		m.readMatrixFile(filePath);
-		mapreduce::specification spec;
-		spec.map_tasks = 1;
-		int reduce_tasks = std::max(1U, std::thread::hardware_concurrency());
-		spec.reduce_tasks = reduce_tasks;
-		// double* H = m.H;
-		// double* I = (double*)malloc(n*sizeof(double));
-		vector<double> H;
-		vector<double> I;
-		// I = {0};
+    H = (double*)malloc((size*size)*sizeof(double));
+    *H = {0};
 
-		pagerank_calculator::job::datasource_type datasource(H, I, (n*n)/reduce_tasks, n, 0, 0, n*n);
+    string filename;
+    cout << "Enter File Name: " << endl;
+    cin >> filename;
+    filename = "../test/" + filename;
 
+    readMatrixFile(filename, size, dangling_nodes, H);
+    printMatrix(H, size*size);
 
-		// double* pr = (double*)malloc(n*sizeof(double));
-		// m.pagerank(pr);
-
-		// printMatrix(pr, n);
+    
+    cout <<"\nPageRank analysis MapReduce..." << endl;
+    
+    int n = size;
+    double alpha = 0.85;
+    double DI[n] = {0};
+    
+    for(int i=0;i<dangling_nodes.size();i++){
+		DI[dangling_nodes[i]] = 1.0/n;
 	}
+
+	double GI[n] = {0};
+	I = (double*)malloc((size)*sizeof(double));
+	I[n] = {0};
+	I[0] = 1;
 	
-	else{
-		cerr << "Invalid Arguments!" << endl;
+	bool converged = false;
+	int index = 0;
+
+	job::datasource_type datasource;
+	job job1(datasource, spec);
+    mapreduce::results result;
+
+	while(index < 1){
+		job1.run<mapreduce::schedule_policy::sequential<job> >(result);
+		// job1.run<mapreduce::schedule_policy::cpu_parallel<job> >(result);
+		cout <<"\nMapReduce finished in " << result.job_runtime.count() << "s with " << distance(job1.begin_results(), job1.end_results()) << " results\n\n";
+
+		for(auto it=job1.begin_results(); it!=job1.end_results(); ++it){
+			GI[it->first] = it->second;
+	    }
+
+		int randomDanglingSum = 0;
+		for(int i=0;i<n;i++){
+			randomDanglingSum += alpha*DI[i]*I[i] + ((1.0-alpha)/n)*I[i];
+		}
+
+		for(int i=0;i<n;i++){
+			GI[i] += randomDanglingSum;
+		}
+		memcpy(I, GI, n*sizeof(double));
+		memset(GI, 0, n*sizeof(double));
+		index++;
 	}
 
-	return 0;
+    return 0;
 }
