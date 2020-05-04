@@ -15,6 +15,7 @@ int main(int argc, char *argv[]){
 		string filePath = "../test/" + (string)argv[2];
 
 		m.readMatrixFile(filePath);
+		printMatrix(m.H, n*n);
 
 		double* pr = (double*)malloc(n*sizeof(double));
 		m.pagerank(pr);

@@ -2,11 +2,8 @@
 #include<vector>
 #include<algorithm>
 #include<memory.h>
-#include<string>
 #include<iostream>
 #include<iomanip>
-#include<fstream>
-#include<sstream>
 #include<mpi.h>
 #include "utils.cpp"
 using namespace std;
@@ -26,14 +23,8 @@ int main(int argc, char *argv[]){
 		int tag1 = 21;
 		int tag2 = 22;
 		int tag3 = 23;
-		
-		/*
-		if(mype == 0){
-			cout << np << endl;
-		}
-		*/
 
-		string filePath = "../test/" + (string)argv[1];
+		string filePath = "../test/" + (string)argv[1] + ".txt";
 
 		int n = getMatrixSize(filePath);
 		int size = n;
@@ -80,6 +71,7 @@ int main(int argc, char *argv[]){
 				}
 			}
 			
+			
 			MPI_Reduce(&personalAnswer, &GI, n, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 			
 			if(mype == 0){
@@ -98,8 +90,9 @@ int main(int argc, char *argv[]){
 		}
 		if(mype == 0){
 			elapsed_time += MPI_Wtime();
-			printMatrix(I, n);
+			
 			cout << "Time taken to compute pagerank is: " << elapsed_time << "s" << endl; 
+			writeToFile((string)argv[1], 1, I, n);
 		}
 		MPI_Finalize();
 	}

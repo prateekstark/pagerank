@@ -145,7 +145,7 @@ public:
 		
 		int index = 0;
 
-		while(index < 100){
+		while(index < 1){
 			
 			// this->multiplyMapReduce(factor, H, I, GI);
 			this->multiply(factor, H, I, GI);

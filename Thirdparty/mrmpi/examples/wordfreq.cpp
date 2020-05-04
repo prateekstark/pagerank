@@ -39,8 +39,7 @@ struct Count {
 
 /* ---------------------------------------------------------------------- */
 
-int main(int narg, char **args)
-{
+int main(int narg, char **args){
   MPI_Init(&narg,&args);
 
   int me,nprocs;
@@ -101,10 +100,8 @@ int main(int narg, char **args)
    for each word in file, emit key = word, value = NULL
 ------------------------------------------------------------------------- */
 
-void fileread(int itask, char *fname, KeyValue *kv, void *ptr)
-{
+void fileread(int itask, char *fname, KeyValue *kv, void *ptr){
   // filesize = # of bytes in file
-
   struct stat stbuf;
   int flag = stat(fname,&stbuf);
   if (flag < 0) {
@@ -121,9 +118,9 @@ void fileread(int itask, char *fname, KeyValue *kv, void *ptr)
 
   char *whitespace = " \t\n\f\r\0";
   char *word = strtok(text,whitespace);
-  while (word) {
-    kv->add(word,strlen(word)+1,NULL,0);
-    word = strtok(NULL,whitespace);
+  while(word){
+      kv->add(word,strlen(word)+1,NULL,0);
+      word = strtok(NULL,whitespace);
   }
 
   delete [] text;
@@ -134,10 +131,8 @@ void fileread(int itask, char *fname, KeyValue *kv, void *ptr)
    emit key = word, value = # of multi-values
 ------------------------------------------------------------------------- */
 
-void sum(char *key, int keybytes, char *multivalue,
-	 int nvalues, int *valuebytes, KeyValue *kv, void *ptr) 
-{
-  kv->add(key,keybytes,(char *) &nvalues,sizeof(int));
+void sum(char *key, int keybytes, char *multivalue, int nvalues, int *valuebytes, KeyValue *kv, void *ptr){
+    kv->add(key,keybytes,(char *) &nvalues,sizeof(int));
 }
 
 /* ----------------------------------------------------------------------
@@ -145,13 +140,12 @@ void sum(char *key, int keybytes, char *multivalue,
    order values by count, largest first
 ------------------------------------------------------------------------- */
 
-int ncompare(char *p1, int len1, char *p2, int len2)
-{
-  int i1 = *(int *) p1;
-  int i2 = *(int *) p2;
-  if (i1 > i2) return -1;
-  else if (i1 < i2) return 1;
-  else return 0;
+int ncompare(char *p1, int len1, char *p2, int len2){
+    int i1 = *(int *) p1;
+    int i2 = *(int *) p2;
+    if (i1 > i2) return -1;
+    else if (i1 < i2) return 1;
+    else return 0;
 }
 
 /* ----------------------------------------------------------------------

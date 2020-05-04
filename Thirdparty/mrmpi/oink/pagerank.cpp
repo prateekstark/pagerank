@@ -52,7 +52,6 @@ void PageRank::run()
   // iterate over PageRank calculations
 
   for (int iterate = 0; iterate < maxiter; iterate++) {
-    
 
   }
 

@@ -1,5 +1,10 @@
 #include<iostream>
 #include<vector>
+#include<fstream>
+#include<sstream>
+#include<string>
+#include<iomanip>
+
 using namespace std;
 
 void printVectorMatrix(vector<vector<double> > matrix){
@@ -155,6 +160,73 @@ void readCompactMatrixFile(string filename, int size, vector<int> &dangling_node
     inFile.close();
 }
 
+void readMapMatrixFile(string filename, int size, vector<int> &dangling_nodes, map<int, vector<pair<int, double> > > &H_Map, vector<int> &activeIndices){
+	ifstream inFile;
+    inFile.open(filename);
+    double x;
+
+    int fromVertex, toVertex;
+    if(!inFile){
+        cout << "Unable to open file";
+        exit(1);
+    }
+    vector<vector<pair<int, double> > > H_Compact;
+    H_Compact.resize(size);
+
+    string line;
+    int presentVertex = -1;
+    vector<int> adjacencyList;
+    int tempSize;
+	int num_links[size] = {0};
+
+    while(getline(inFile, line)){	
+    	stringstream ss(line);
+    	ss >> fromVertex;
+    	ss >> toVertex;
+    	
+    	if(presentVertex != fromVertex){
+    		if(presentVertex != -1){
+	    		num_links[presentVertex] = adjacencyList.size();
+	    		tempSize = adjacencyList.size();
+
+	    		for(int i=0;i<tempSize;i++){
+	    			H_Compact[adjacencyList[i]].push_back(make_pair(presentVertex, 1.0/tempSize));
+
+	    		}
+	    		adjacencyList.clear();
+	    	}
+    		presentVertex = fromVertex;
+    	}
+
+    	adjacencyList.push_back(toVertex);
+    }
+
+	num_links[presentVertex] = adjacencyList.size();
+	tempSize = adjacencyList.size();
+
+	for(int i=0;i<tempSize;i++){
+		H_Compact[adjacencyList[i]].push_back(make_pair(presentVertex, 1.0/tempSize));
+	}
+	for(int i=0;i<size;i++){
+		if(H_Compact[i].size() != 0){
+			H_Map.insert(pair<int, vector<pair<int, double> > >(i, H_Compact[i]));
+			activeIndices.push_back(i);
+		}
+	}
+
+	adjacencyList.clear();
+	H_Compact.clear();
+
+	dangling_nodes.clear();
+	for(int i=0;i<size;i++){
+		if(num_links[i] == 0){
+			dangling_nodes.push_back(i);
+		}
+	}
+
+    inFile.close();
+}
+
 
 int getMatrixSize(string filename){
 	int matSize = 0;
@@ -206,4 +278,29 @@ void printMatrixMap(vector<vector<pair<int, double> > > matrix){
 		}
 		cout << endl;
 	}
+}
+
+
+void writeToFile(string fileName, int method, double* array, int size){
+	string suffix;
+	if(method == 0){
+		suffix = "-pr-cpp.txt";
+	}
+	if(method == 1){
+		suffix = "-pr-mpi.txt";
+	}
+	if(method == 2){
+		suffix = "-pr-mpi-base.txt";
+	}
+
+	ofstream outputfile;
+	fileName = fileName + suffix;
+	outputfile.open(fileName);
+	double sum = 0;
+	for(int i=0;i<size;i++){
+		sum += array[i];
+		outputfile << i << " = " << setprecision(15) << array[i] << endl; 
+	}
+	outputfile << "sum " << setprecision(15) << sum << endl;
+	outputfile.close();
 }

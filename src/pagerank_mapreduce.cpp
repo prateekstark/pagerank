@@ -17,10 +17,14 @@
 #include<chrono>
 using namespace std;
 using namespace std::chrono;
+
 double* I;
-vector<vector<pair<int, double> > > H_Compact;
+// vector<vector<pair<int, double> > > H_Compact;/
+map<int, vector<pair<int, double> > > H_Map;
+vector<int> activeIndices;
 vector<int> dangling_nodes;
 double alpha = 0.85;
+int activeNodeSize;
 
 template<typename MapTask>
 class datasource : mapreduce::detail::noncopyable{
@@ -29,16 +33,22 @@ public:
     }
 
     bool const setup_key(typename MapTask::key_type &key){
-        key = sequence_++;
+    	int tempIndex = sequence_++;
+        key = activeIndices[tempIndex];
         // return ((H_Compact[key].size() != 0) && (key < size));
-        return key < size;
+        // return key < size;
+        // return H_Map.find(key) != H_Map.end();
+        return tempIndex < activeNodeSize;
     }
 
     bool const get_data(typename MapTask::key_type const &key, typename MapTask::value_type &value){
     	// value.clear();
-    	for(int j=0;j<H_Compact[key].size();j++){
-			value.push_back(H_Compact[key][j]);
+    	for(int j=0;j<H_Map[key].size();j++){
+			value.push_back(H_Map[key][j]);
 		}
+		// value = H_Map[key];
+
+		// value.assign()
         return true;
     }
 
@@ -51,10 +61,10 @@ struct map_task : public mapreduce::map_task<int, vector<pair<int, double> > >{
     template<typename Runtime>
     void operator()(Runtime &runtime, key_type const &key, value_type const &value) const
     {
-    	if(value.size() != 0){
-			typename Runtime::reduce_task_type::key_type const emit_key = key;
-	    	runtime.emit_intermediate(emit_key, value);	
-    	}
+    	// if(value.size() != 0){
+		typename Runtime::reduce_task_type::key_type const emit_key = key;
+    	runtime.emit_intermediate(emit_key, value);	
+    	// }
     }
 };
 
@@ -87,7 +97,7 @@ int main(int argc, char *argv[]){
     	return 0;
     }
 
-    string filename = "../test/" + (string)argv[1];
+    string filename = "../test/" + (string)argv[1] + ".txt";
 
     if (argc > 2){
         spec.map_tasks = max(1, atoi(argv[1]));
@@ -106,9 +116,12 @@ int main(int argc, char *argv[]){
     int n = size;
     cout << "Matrix Size: " << size << endl;
 
-    H_Compact.resize(n);
-    readCompactMatrixFile(filename, n, dangling_nodes, H_Compact);
-
+    // H_Compact.resize(n);
+    // readCompactMatrixFile(filename, n, dangling_nodes, H_Compact);
+    readMapMatrixFile(filename, n, dangling_nodes, H_Map, activeIndices);
+    // printMap(H_Map);
+   
+    activeNodeSize = activeIndices.size();
     cout <<"\nPageRank analysis MapReduce..." << endl;
     auto start = high_resolution_clock::now(); 
 
@@ -127,6 +140,14 @@ int main(int argc, char *argv[]){
 	int index = 0;
 	// return 0;
 	while(index < 100){
+		double randomDanglingSum = 0;
+		
+		for(int i=0;i<n;i++){
+			randomDanglingSum += alpha*DI[i]*I[i] + ((1.0-alpha)/n)*I[i];
+		}
+
+		memset(GI, 0, n*sizeof(double));
+		
 		job::datasource_type datasource(size);
 		job job1(datasource, spec);
 	    mapreduce::results result;
@@ -137,28 +158,20 @@ int main(int argc, char *argv[]){
 		for(auto it=job1.begin_results(); it!=job1.end_results(); ++it){
 			GI[it->first] = it->second[0].second;
 	    }
-
-	    // printMatrix(GI, n);
-
-		double randomDanglingSum = 0;
-		
-		for(int i=0;i<n;i++){
-			randomDanglingSum += alpha*DI[i]*I[i] + ((1.0-alpha)/n)*I[i];
-		}
-
+	    
 		for(int i=0;i<n;i++){
 			GI[i] += randomDanglingSum;
 		}
 
 		memcpy(I, GI, n*sizeof(double));
-		memset(GI, 0, n*sizeof(double));
+		
 		index++;
 	}
 
-	printMatrix(I, n);
+	// printMatrix(I, n);
 	auto stop = high_resolution_clock::now();
 	auto duration = duration_cast<microseconds>(stop - start);
 	cout << "Time taken by function: " << (double)duration.count()/1000000 << " seconds" << endl; 
-
+	writeToFile((string)argv[1], 0, I, n);
     return 0;
 }

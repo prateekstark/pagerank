@@ -1,7 +1,7 @@
 # MPI-based makefile using mpic++ and mpicc
 
 CC =		mpicc -m64
-CPP =		mpic++ -m64
+CPP =		mpic++ -std=c++11 -m64
 CCFLAGS =	-g -O -I../src 
 LINK =		mpic++
 LINKFLAGS =	-g -O

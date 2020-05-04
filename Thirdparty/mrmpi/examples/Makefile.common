@@ -1,6 +1,6 @@
 # Targets
 
-all:	wordfreq cwordfreq rmat crmat
+all:	wordfreq cwordfreq rmat crmat prmpi
 
 wordfreq:	wordfreq.o $(USRLIB)
 	$(LINK) $(LINKFLAGS) wordfreq.o $(USRLIB) $(SYSLIB) -o wordfreq
@@ -14,8 +14,11 @@ rmat:	rmat.o $(USRLIB)
 crmat:	crmat.o $(USRLIB)
 	$(LINK) $(LINKFLAGS) crmat.o $(USRLIB) $(SYSLIB) -o crmat
 
+prmpi:	prmpi.o $(USRLIB)
+	$(LINK) $(LINKFLAGS) prmpi.o $(USRLIB) $(SYSLIB) -o prmpi
+
 clean:
-	rm *.o wordfreq cwordfreq rmat crmat
+	rm *.o wordfreq cwordfreq rmat crmat prmpi
 
 # Rules
 
